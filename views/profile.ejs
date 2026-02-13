@@ -1,0 +1,99 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <h1>My Profile</h1>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-8 mx-auto">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="mb-0">Profile Information</h3>
+      </div>
+      <div class="card-body">
+        <% if (error) { %>
+          <div class="alert alert-danger" role="alert">
+            <%= error %>
+          </div>
+        <% } %>
+        <% if (success) { %>
+          <div class="alert alert-success" role="alert">
+            <%= success %>
+          </div>
+        <% } %>
+        <form id="profile-form" action="/api/users/profile" method="POST">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" value="<%= user.username %>" required>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" value="<%= user.email %>" required>
+          </div>
+          <div class="mb-3">
+            <label for="full_name" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="full_name" name="full_name" value="<%= user.full_name || '' %>">
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label for="password" class="form-label">New Password (leave blank to keep current password)</label>
+            <input type="password" class="form-control" id="password" name="password">
+          </div>
+          <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirm New Password</label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Update Profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('profile-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const full_name = document.getElementById('full_name').value;
+      const password = document.getElementById('password').value;
+      const confirm_password = document.getElementById('confirm_password').value;
+      
+      // Validate passwords match if provided
+      if (password && password !== confirm_password) {
+        alert('Passwords do not match');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/users/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username,
+            email,
+            full_name,
+            password: password || undefined
+          })
+        });
+        
+        if (response.ok) {
+          // Reload the page to show success message
+          window.location.href = '/profile?success=Profile updated successfully';
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Failed to update profile');
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('An error occurred while updating your profile');
+      }
+    });
+  });
+</script>

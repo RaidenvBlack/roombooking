@@ -1,0 +1,99 @@
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="text-center">Register</h2>
+      </div>
+      <div class="card-body">
+        <% if (error) { %>
+          <div class="alert alert-danger" role="alert">
+            <%= error %>
+          </div>
+        <% } %>
+        <form action="/api/users/register" method="POST" id="register-form">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="full_name" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="full_name" name="full_name">
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+          <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Register</button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-center">
+        <p class="mb-0">Already have an account? <a href="/login">Login</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('register-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const full_name = document.getElementById('full_name').value;
+    const password = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+    
+    // Client-side validation
+    if (password !== confirm_password) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-danger';
+      errorDiv.textContent = 'Passwords do not match';
+      
+      const existingError = document.querySelector('.alert-danger');
+      if (existingError) {
+        existingError.replaceWith(errorDiv);
+      } else {
+        document.querySelector('.card-body').insertBefore(errorDiv, document.getElementById('register-form'));
+      }
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, email, full_name, password })
+      });
+      
+      if (response.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        const data = await response.json();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger';
+        errorDiv.textContent = data.error || 'Registration failed';
+        
+        const existingError = document.querySelector('.alert-danger');
+        if (existingError) {
+          existingError.replaceWith(errorDiv);
+        } else {
+          document.querySelector('.card-body').insertBefore(errorDiv, document.getElementById('register-form'));
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  });
+</script>

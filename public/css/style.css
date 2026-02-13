@@ -1,0 +1,130 @@
+/* Global Styles */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  flex: 1;
+}
+
+.footer {
+  margin-top: auto;
+}
+
+/* Calendar Styles */
+.fc-event {
+  cursor: pointer;
+}
+
+.fc-event-title {
+  font-weight: bold;
+}
+
+.fc-daygrid-day.fc-day-today {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Card Styles */
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Form Styles */
+.form-control:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0069d9;
+  border-color: #0062cc;
+}
+
+/* Navigation Styles */
+.navbar {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.nav-link {
+  font-weight: 500;
+}
+
+/* Room Card Styles */
+.room-card {
+  transition: transform 0.3s;
+}
+
+.room-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Booking List Styles */
+.list-group-item {
+  transition: background-color 0.2s;
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .card-title {
+    font-size: 1.25rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  .display-4 {
+    font-size: 2.5rem;
+  }
+}
+
+/* Status Badge Colors */
+.badge.bg-success {
+  background-color: #28a745 !important;
+}
+
+.badge.bg-warning {
+  background-color: #ffc107 !important;
+  color: #212529;
+}
+
+.badge.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+.badge.bg-primary {
+  background-color: #007bff !important;
+}
+
+/* Calendar Height for Different Views */
+#calendar {
+  min-height: 600px;
+}
+
+@media (max-width: 768px) {
+  #calendar {
+    min-height: 400px;
+  }
+}

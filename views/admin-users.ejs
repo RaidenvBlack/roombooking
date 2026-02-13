@@ -1,0 +1,430 @@
+<div class="row mb-4">
+  <div class="col-md-8">
+    <h1>Manage Users</h1>
+  </div>
+  <div class="col-md-4 text-end">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
+      <i class="bi bi-plus-circle"></i> Add New User
+    </button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">User List</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <!-- Users will be loaded here -->
+              <tr>
+                <td colspan="7" class="text-center">
+                  <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="add-user-form">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" required>
+          </div>
+          <div class="mb-3">
+            <label for="full-name" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="full-name">
+          </div>
+          <div class="mb-3">
+            <label for="role" class="form-label">Role</label>
+            <select class="form-select" id="role" required>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-user-btn">Save User</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-user-form">
+          <input type="hidden" id="edit-user-id">
+          <div class="mb-3">
+            <label for="edit-username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="edit-username" required>
+          </div>
+          <div class="mb-3">
+            <label for="edit-email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="edit-email" required>
+          </div>
+          <div class="mb-3">
+            <label for="edit-password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="edit-password" placeholder="Leave blank to keep current password">
+            <small class="form-text text-muted">Leave blank to keep current password</small>
+          </div>
+          <div class="mb-3">
+            <label for="edit-full-name" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="edit-full-name">
+          </div>
+          <div class="mb-3">
+            <label for="edit-role" class="form-label">Role</label>
+            <select class="form-select" id="edit-role" required>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="update-user-btn">Update User</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete User Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteUserModalLabel">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+        <p><strong>Note:</strong> All bookings associated with this user will also be deleted.</p>
+        <input type="hidden" id="delete-user-id">
+        <div id="delete-user-warning" class="alert alert-danger d-none">
+          You cannot delete the last admin user.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete-user-btn">Delete User</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Load users
+    loadUsers();
+    
+    // Add user event handler
+    document.getElementById('save-user-btn').addEventListener('click', function() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const full_name = document.getElementById('full-name').value;
+      const role = document.getElementById('role').value;
+      
+      if (!username || !email || !password) {
+        alert('Username, email, and password are required');
+        return;
+      }
+      
+      fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          full_name,
+          role
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => {
+            throw new Error(data.error || 'Failed to create user');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+        modal.hide();
+        document.getElementById('add-user-form').reset();
+        
+        // Reload users
+        loadUsers();
+        
+        // Show success message
+        alert('User created successfully');
+      })
+      .catch(error => {
+        console.error('Error creating user:', error);
+        alert('Error creating user: ' + error.message);
+      });
+    });
+    
+    // Update user event handler
+    document.getElementById('update-user-btn').addEventListener('click', function() {
+      const id = document.getElementById('edit-user-id').value;
+      const username = document.getElementById('edit-username').value;
+      const email = document.getElementById('edit-email').value;
+      const password = document.getElementById('edit-password').value;
+      const full_name = document.getElementById('edit-full-name').value;
+      const role = document.getElementById('edit-role').value;
+      
+      if (!username || !email) {
+        alert('Username and email are required');
+        return;
+      }
+      
+      const userData = {
+        username,
+        email,
+        full_name,
+        role
+      };
+      
+      // Only include password if it's provided
+      if (password) {
+        userData.password = password;
+      }
+      
+      fetch(`/api/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => {
+            throw new Error(data.error || 'Failed to update user');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+        modal.hide();
+        
+        // Reload users
+        loadUsers();
+        
+        // Show success message
+        alert('User updated successfully');
+      })
+      .catch(error => {
+        console.error('Error updating user:', error);
+        alert('Error updating user: ' + error.message);
+      });
+    });
+    
+    // Delete user event handler
+    document.getElementById('confirm-delete-user-btn').addEventListener('click', function() {
+      const id = document.getElementById('delete-user-id').value;
+      
+      fetch(`/api/users/${id}`, {
+        method: 'DELETE'
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => {
+            throw new Error(data.error || 'Failed to delete user');
+          });
+        }
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+        modal.hide();
+        
+        // Reload users
+        loadUsers();
+        
+        // Show success message
+        alert('User deleted successfully');
+      })
+      .catch(error => {
+        console.error('Error deleting user:', error);
+        
+        // Show error message
+        if (error.message.includes('last admin')) {
+          document.getElementById('delete-user-warning').classList.remove('d-none');
+        } else {
+          alert('Error deleting user: ' + error.message);
+        }
+      });
+    });
+    
+    // Function to load users
+    function loadUsers() {
+      fetch('/api/users')
+        .then(response => response.json())
+        .then(users => {
+          const tableBody = document.getElementById('users-table-body');
+          
+          if (users.length === 0) {
+            tableBody.innerHTML = `
+              <tr>
+                <td colspan="7" class="text-center">No users found</td>
+              </tr>
+            `;
+            return;
+          }
+          
+          let html = '';
+          users.forEach(user => {
+            html += `
+              <tr>
+                <td>${user.id}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>${user.full_name || 'N/A'}</td>
+                <td><span class="badge bg-${user.role === 'admin' ? 'danger' : 'primary'}">${user.role}</span></td>
+                <td>${moment(user.created_at).format('YYYY-MM-DD')}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary edit-user-btn" data-user-id="${user.id}">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                  <button class="btn btn-sm btn-danger delete-user-btn" data-user-id="${user.id}">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+          
+          tableBody.innerHTML = html;
+          
+          // Add event listeners to edit buttons
+          document.querySelectorAll('.edit-user-btn').forEach(button => {
+            button.addEventListener('click', function() {
+              const userId = this.getAttribute('data-user-id');
+              openEditUserModal(userId);
+            });
+          });
+          
+          // Add event listeners to delete buttons
+          document.querySelectorAll('.delete-user-btn').forEach(button => {
+            button.addEventListener('click', function() {
+              const userId = this.getAttribute('data-user-id');
+              openDeleteUserModal(userId);
+            });
+          });
+        })
+        .catch(error => {
+          console.error('Error fetching users:', error);
+          document.getElementById('users-table-body').innerHTML = `
+            <tr>
+              <td colspan="7" class="text-center text-danger">
+                Error loading users. Please try again later.
+              </td>
+            </tr>
+          `;
+        });
+    }
+    
+    // Function to open edit user modal
+    function openEditUserModal(userId) {
+      fetch(`/api/users/${userId}`)
+        .then(response => response.json())
+        .then(user => {
+          document.getElementById('edit-user-id').value = user.id;
+          document.getElementById('edit-username').value = user.username;
+          document.getElementById('edit-email').value = user.email;
+          document.getElementById('edit-password').value = ''; // Clear password field
+          document.getElementById('edit-full-name').value = user.full_name || '';
+          document.getElementById('edit-role').value = user.role;
+          
+          const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+          modal.show();
+        })
+        .catch(error => {
+          console.error('Error fetching user details:', error);
+          alert('Error fetching user details: ' + error.message);
+        });
+    }
+    
+    // Function to open delete user modal
+    function openDeleteUserModal(userId) {
+      document.getElementById('delete-user-id').value = userId;
+      document.getElementById('delete-user-warning').classList.add('d-none');
+      
+      // Check if this is the last admin user
+      fetch('/api/users')
+        .then(response => response.json())
+        .then(users => {
+          const adminUsers = users.filter(user => user.role === 'admin');
+          const userToDelete = users.find(user => user.id == userId);
+          
+          if (adminUsers.length === 1 && userToDelete.role === 'admin') {
+            document.getElementById('delete-user-warning').classList.remove('d-none');
+            document.getElementById('confirm-delete-user-btn').disabled = true;
+          } else {
+            document.getElementById('confirm-delete-user-btn').disabled = false;
+          }
+          
+          const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+          modal.show();
+        })
+        .catch(error => {
+          console.error('Error checking admin users:', error);
+          const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+          modal.show();
+        });
+    }
+  });
+</script>

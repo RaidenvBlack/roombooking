@@ -1,0 +1,502 @@
+<div class="row mb-4">
+  <div class="col-md-8">
+    <h1>My Bookings</h1>
+  </div>
+  <div class="col-md-4 text-end">
+    <a href="/rooms" class="btn btn-primary">Book a Room</a>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="bookings-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab" aria-controls="upcoming" aria-selected="true">Upcoming</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="past-tab" data-bs-toggle="tab" data-bs-target="#past" type="button" role="tab" aria-controls="past" aria-selected="false">Past</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cancelled-tab" data-bs-toggle="tab" data-bs-target="#cancelled" type="button" role="tab" aria-controls="cancelled" aria-selected="false">Cancelled</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body">
+        <div class="tab-content" id="bookings-tabs-content">
+          <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+            <div id="upcoming-bookings-container">
+              <div class="text-center">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="past" role="tabpanel" aria-labelledby="past-tab">
+            <div id="past-bookings-container">
+              <div class="text-center">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="cancelled" role="tabpanel" aria-labelledby="cancelled-tab">
+            <div id="cancelled-bookings-container">
+              <div class="text-center">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="mb-0">Calendar View</h3>
+      </div>
+      <div class="card-body">
+        <div id="calendar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Details Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bookingModalLabel">Booking Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="booking-modal-body">
+        <!-- Booking details will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" id="cancel-booking-btn">Cancel Booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Helper function to safely parse dates
+  function safelyParseMoment(dateString) {
+    if (!dateString) return null;
+
+    // Try parsing with moment's automatic format detection
+    let date = moment(dateString);
+
+    // If it's not valid, try specific formats
+    if (!date.isValid()) {
+      // Try MySQL datetime format
+      date = moment(dateString, 'YYYY-MM-DD HH:mm:ss');
+    }
+
+    // If still not valid, log the issue and return null
+    if (!date.isValid()) {
+      console.error(`Invalid date string: ${dateString}`);
+      return null;
+    }
+
+    return date;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Load bookings
+    loadBookings();
+
+    // Initialize calendar
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      events: function(info, successCallback, failureCallback) {
+        fetch('/api/bookings')
+          .then(response => {
+            console.log('Calendar events response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Calendar events data received:', data);
+
+            if (!Array.isArray(data)) {
+              console.error('Calendar events data is not an array:', data);
+              throw new Error('Calendar events data is not in the expected format');
+            }
+
+            const events = data.map(booking => {
+              try {
+                // Use the safe parsing function for start and end times
+                const startMoment = safelyParseMoment(booking.start_time);
+                const endMoment = safelyParseMoment(booking.end_time);
+
+                if (!startMoment || !endMoment) {
+                  console.error(`Invalid dates for calendar event ${booking.id}:`, booking);
+                  return null; // Skip this booking
+                }
+
+                return {
+                  id: booking.id,
+                  title: booking.title || 'Untitled Booking',
+                  start: startMoment.toDate(),
+                  end: endMoment.toDate(),
+                  extendedProps: {
+                    room: booking.room_name || 'Unknown Room',
+                    description: booking.description || '',
+                    status: booking.status || 'unknown'
+                  },
+                  backgroundColor: getStatusColor(booking.status)
+                };
+              } catch (error) {
+                console.error(`Error processing calendar event ${booking.id}:`, error);
+                return null; // Skip this booking
+              }
+            }).filter(event => event !== null); // Remove null events
+
+            console.log('Calendar events processed:', events);
+            successCallback(events);
+          })
+          .catch(error => {
+            console.error('Error fetching calendar events:', error);
+            failureCallback(error);
+          });
+      },
+      eventClick: function(info) {
+        showBookingDetails(info.event.id);
+      }
+    });
+
+    calendar.render();
+
+    // Handle tab changes
+    document.querySelectorAll('#bookings-tabs button').forEach(button => {
+      button.addEventListener('click', function() {
+        // No need to reload data, it's already loaded
+      });
+    });
+
+    // Function to load bookings
+    function loadBookings() {
+      fetch('/api/bookings')
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(bookings => {
+          console.log('Bookings received:', bookings);
+
+          // Check if bookings is an array
+          if (!Array.isArray(bookings)) {
+            console.error('Bookings is not an array:', bookings);
+            throw new Error('Bookings data is not in the expected format');
+          }
+
+          const now = moment();
+          console.log('Current time:', now.format());
+
+          // Filter bookings with debug logging
+          const upcomingBookings = bookings.filter(booking => {
+            if (!booking.start_time) {
+              console.error(`Booking ${booking.id || 'unknown'} has no start_time`);
+              return false;
+            }
+
+            const startTime = safelyParseMoment(booking.start_time);
+            if (!startTime) return false;
+
+            const isAfter = startTime.isAfter(now);
+            const notCancelled = booking.status !== 'cancelled';
+            console.log(`Booking ${booking.id} - Start: ${startTime.format()}, isAfter: ${isAfter}, notCancelled: ${notCancelled}`);
+            return isAfter && notCancelled;
+          });
+
+          const pastBookings = bookings.filter(booking => {
+            if (!booking.end_time) {
+              console.error(`Booking ${booking.id || 'unknown'} has no end_time`);
+              return false;
+            }
+
+            const endTime = safelyParseMoment(booking.end_time);
+            if (!endTime) return false;
+
+            const isBefore = endTime.isBefore(now);
+            const notCancelled = booking.status !== 'cancelled';
+            console.log(`Booking ${booking.id} - End: ${endTime.format()}, isBefore: ${isBefore}, notCancelled: ${notCancelled}`);
+            return isBefore && notCancelled;
+          });
+
+          const cancelledBookings = bookings.filter(booking => {
+            const isCancelled = booking.status === 'cancelled';
+            console.log(`Booking ${booking.id} - Status: ${booking.status}, isCancelled: ${isCancelled}`);
+            return isCancelled;
+          });
+
+          console.log('Upcoming bookings:', upcomingBookings);
+          console.log('Past bookings:', pastBookings);
+          console.log('Cancelled bookings:', cancelledBookings);
+
+          // Display bookings
+          displayBookings('upcoming-bookings-container', upcomingBookings);
+          displayBookings('past-bookings-container', pastBookings);
+          displayBookings('cancelled-bookings-container', cancelledBookings);
+        })
+        .catch(error => {
+          console.error('Error fetching bookings:', error);
+          document.getElementById('upcoming-bookings-container').innerHTML = `
+            <div class="alert alert-danger">
+              Error loading bookings. Please try again later.
+            </div>
+          `;
+          document.getElementById('past-bookings-container').innerHTML = `
+            <div class="alert alert-danger">
+              Error loading bookings. Please try again later.
+            </div>
+          `;
+          document.getElementById('cancelled-bookings-container').innerHTML = `
+            <div class="alert alert-danger">
+              Error loading bookings. Please try again later.
+            </div>
+          `;
+        });
+    }
+
+    // Function to display bookings
+    function displayBookings(containerId, bookings) {
+      const container = document.getElementById(containerId);
+
+      if (!bookings || bookings.length === 0) {
+        container.innerHTML = `
+          <div class="alert alert-info">
+            No bookings found.
+          </div>
+        `;
+        return;
+      }
+
+      let html = '<div class="list-group">';
+
+      bookings.forEach(booking => {
+        try {
+          // Use the safe parsing function
+          const startMoment = safelyParseMoment(booking.start_time);
+          const endMoment = safelyParseMoment(booking.end_time);
+
+          if (!startMoment || !endMoment) {
+            console.error(`Invalid dates for booking ${booking.id}:`, booking);
+            return; // Skip this booking
+          }
+
+          const startTime = startMoment.format('MMMM D, YYYY h:mm A');
+          const endTime = endMoment.format('h:mm A');
+
+          html += `
+            <a href="#" class="list-group-item list-group-item-action" data-booking-id="${booking.id}">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">${booking.title || 'Untitled Booking'}</h5>
+                <small class="text-${getStatusClass(booking.status)}">${booking.status || 'unknown'}</small>
+              </div>
+              <p class="mb-1">Room: ${booking.room_name || 'Unknown Room'}</p>
+              <small>${startTime} - ${endTime}</small>
+            </a>
+          `;
+        } catch (error) {
+          console.error(`Error displaying booking ${booking.id}:`, error);
+          // Skip this booking
+        }
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+
+      // Add event listeners to booking items
+      container.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          const bookingId = this.getAttribute('data-booking-id');
+          showBookingDetails(bookingId);
+        });
+      });
+    }
+
+    // Function to show booking details
+    function showBookingDetails(bookingId) {
+      fetch(`/api/bookings/${bookingId}`)
+        .then(response => {
+          console.log(`Booking details response status for ID ${bookingId}:`, response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(booking => {
+          console.log(`Booking details received for ID ${bookingId}:`, booking);
+
+          if (!booking) {
+            throw new Error('No booking data received');
+          }
+
+          // Use the safe parsing function
+          const startMoment = safelyParseMoment(booking.start_time);
+          const endMoment = safelyParseMoment(booking.end_time);
+
+          if (!startMoment || !endMoment) {
+            console.error(`Invalid dates for booking ${bookingId}:`, booking);
+            throw new Error('Invalid booking dates');
+          }
+
+          const startTime = startMoment.format('MMMM D, YYYY h:mm A');
+          const endTime = endMoment.format('h:mm A');
+
+          const modalBody = document.getElementById('booking-modal-body');
+          modalBody.innerHTML = `
+            <div class="mb-3">
+              <h5>${booking.title || 'Untitled Booking'}</h5>
+              <span class="badge bg-${getStatusClass(booking.status)}">${booking.status || 'unknown'}</span>
+            </div>
+            <p><strong>Room:</strong> ${booking.room_name || 'Unknown Room'}</p>
+            <p><strong>Time:</strong> ${startTime} - ${endTime}</p>
+            <p><strong>Description:</strong> ${booking.description || 'No description provided.'}</p>
+          `;
+
+          // Set up cancel button
+          const cancelBtn = document.getElementById('cancel-booking-btn');
+
+          if (booking.status === 'cancelled' || startMoment.isBefore(moment())) {
+            cancelBtn.style.display = 'none';
+          } else {
+            cancelBtn.style.display = 'block';
+            cancelBtn.onclick = function() {
+              cancelBooking(bookingId);
+            };
+          }
+
+          // Show the modal
+          const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+          bookingModal.show();
+        })
+        .catch(error => {
+          console.error(`Error fetching booking details for ID ${bookingId}:`, error);
+          alert('Error loading booking details. Please try again later.');
+        });
+    }
+
+    // Function to cancel a booking
+    function cancelBooking(bookingId) {
+      if (confirm('Are you sure you want to cancel this booking?')) {
+        console.log(`Attempting to cancel booking ${bookingId}`);
+
+        // Get the existing booking first to ensure we have all required fields
+        fetch(`/api/bookings/${bookingId}`)
+          .then(response => {
+            console.log(`Get booking response status for cancel ID ${bookingId}:`, response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(booking => {
+            console.log(`Booking data received for cancel ID ${bookingId}:`, booking);
+
+            if (!booking) {
+              throw new Error('No booking data received');
+            }
+
+            // Now update the booking with cancelled status
+            return fetch(`/api/bookings/${bookingId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                room_id: booking.room_id,
+                title: booking.title,
+                description: booking.description,
+                start_time: booking.start_time,
+                end_time: booking.end_time,
+                status: 'cancelled'
+              })
+            });
+          })
+          .then(response => {
+            console.log(`Cancel booking response status for ID ${bookingId}:`, response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log(`Booking cancelled successfully for ID ${bookingId}:`, data);
+            alert('Booking cancelled successfully');
+
+            // Close the modal
+            const bookingModal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
+            bookingModal.hide();
+
+            // Reload bookings and calendar
+            loadBookings();
+            calendar.refetchEvents();
+          })
+          .catch(error => {
+            console.error(`Error cancelling booking ${bookingId}:`, error);
+            alert('An error occurred while cancelling the booking. Please try again later.');
+          });
+      }
+    }
+
+    // Helper function to get status color
+    function getStatusColor(status) {
+      switch(status) {
+        case 'confirmed':
+          return '#28a745'; // green
+        case 'pending':
+          return '#ffc107'; // yellow
+        case 'cancelled':
+          return '#dc3545'; // red
+        default:
+          return '#007bff'; // blue
+      }
+    }
+
+    // Helper function to get status class
+    function getStatusClass(status) {
+      switch(status) {
+        case 'confirmed':
+          return 'success';
+        case 'pending':
+          return 'warning';
+        case 'cancelled':
+          return 'danger';
+        default:
+          return 'primary';
+      }
+    }
+  });
+</script>
+
+<style>
+  #calendar {
+    height: 600px;
+  }
+</style>

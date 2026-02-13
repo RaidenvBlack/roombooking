@@ -1,0 +1,213 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/rooms">Rooms</a></li>
+        <li class="breadcrumb-item active" aria-current="page"><%= room.name %></li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h2 class="mb-0"><%= room.name %></h2>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p><strong>Capacity:</strong> <%= room.capacity %> people</p>
+            <p><strong>Location:</strong> <%= room.location || 'N/A' %></p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Created:</strong> <%= moment(room.created_at).format('MMMM D, YYYY') %></p>
+            <p><strong>Last Updated:</strong> <%= moment(room.updated_at).format('MMMM D, YYYY') %></p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <h5>Description</h5>
+            <p><%= room.description || 'No description available.' %></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="mb-0">Room Availability</h3>
+      </div>
+      <div class="card-body">
+        <div id="calendar"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="mb-0">Book This Room</h3>
+      </div>
+      <div class="card-body">
+        <form id="booking-form">
+          <div class="mb-3">
+            <label for="title" class="form-label">Booking Title</label>
+            <input type="text" class="form-control" id="title" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" class="form-control" id="date" name="date" required>
+          </div>
+          <div class="row mb-3">
+            <div class="col">
+              <label for="start_time" class="form-label">Start Time</label>
+              <input type="time" class="form-control" id="start_time" name="start_time" required>
+            </div>
+            <div class="col">
+              <label for="end_time" class="form-label">End Time</label>
+              <input type="time" class="form-control" id="end_time" name="end_time" required>
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Book Now</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize calendar
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridWeek',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'timeGridWeek,timeGridDay'
+      },
+      slotMinTime: '08:00:00',
+      slotMaxTime: '20:00:00',
+      allDaySlot: false,
+      events: function(info, successCallback, failureCallback) {
+        const startTime = info.start.toISOString();
+        const endTime = info.end.toISOString();
+        
+        fetch(`/api/bookings/room/<%= room.id %>`)
+          .then(response => response.json())
+          .then(data => {
+            const events = data.map(booking => ({
+              id: booking.id,
+              title: booking.title,
+              start: booking.start_time,
+              end: booking.end_time,
+              extendedProps: {
+                description: booking.description,
+                status: booking.status,
+                user: booking.user_username
+              },
+              backgroundColor: getStatusColor(booking.status)
+            }));
+            successCallback(events);
+          })
+          .catch(error => {
+            console.error('Error fetching bookings:', error);
+            failureCallback(error);
+          });
+      },
+      eventClick: function(info) {
+        const booking = info.event;
+        const props = booking.extendedProps;
+        
+        alert(`
+          Booking: ${booking.title}
+          Time: ${moment(booking.start).format('MMMM D, YYYY h:mm A')} - ${moment(booking.end).format('h:mm A')}
+          Status: ${props.status}
+          Booked by: ${props.user}
+          ${props.description ? `Description: ${props.description}` : ''}
+        `);
+      }
+    });
+    
+    calendar.render();
+    
+    // Set default date to today
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    
+    // Handle booking form submission
+    document.getElementById('booking-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const date = document.getElementById('date').value;
+      const startTime = document.getElementById('start_time').value;
+      const endTime = document.getElementById('end_time').value;
+      
+      const startDateTime = new Date(`${date}T${startTime}`);
+      const endDateTime = new Date(`${date}T${endTime}`);
+      
+      // Validate times
+      if (endDateTime <= startDateTime) {
+        alert('End time must be after start time');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            room_id: <%= room.id %>,
+            title,
+            description,
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString()
+          })
+        });
+        
+        if (response.ok) {
+          alert('Booking created successfully!');
+          calendar.refetchEvents();
+          document.getElementById('booking-form').reset();
+          document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Failed to create booking');
+        }
+      } catch (error) {
+        console.error('Error creating booking:', error);
+        alert('An error occurred while creating the booking');
+      }
+    });
+    
+    function getStatusColor(status) {
+      switch(status) {
+        case 'confirmed':
+          return '#28a745'; // green
+        case 'pending':
+          return '#ffc107'; // yellow
+        case 'cancelled':
+          return '#dc3545'; // red
+        default:
+          return '#007bff'; // blue
+      }
+    }
+  });
+</script>
+
+<style>
+  #calendar {
+    height: 500px;
+  }
+</style>
