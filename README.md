@@ -178,7 +178,7 @@ cat backup.sql | docker exec -i roombooking-mysql mysql -uroombooking_user -proo
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/roombooking.git
+   git clone https://github.com/RaidenvBlack/roombooking.git
    cd roombooking
    ```
 
